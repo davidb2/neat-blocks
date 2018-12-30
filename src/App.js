@@ -1,26 +1,57 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import BlockGrid from './BlockGrid';
 
 class App extends Component {
+  constructor(props) {
+    super(props);
+
+    this.action = { rowDelta: 0, colDelta: 0 };
+    this.changeAction = this.changeAction.bind(this);
+    this.play = this.play.bind(this);
+  }
+
+  play({ board, playerPosition, score }) {
+    const playedAction = this.action;
+    this.action = { rowDelta: 0, colDelta: 0 };
+    return playedAction;
+  }
+
+  changeAction(e) {
+    switch (e.key) {
+    case 'ArrowRight':
+      this.action.colDelta = +1;
+      this.action.rowDelta = 0;
+      break;
+    case 'ArrowLeft':
+      this.action.colDelta = -1;
+      this.action.rowDelta = 0;
+      break;
+    case 'ArrowUp':
+      this.action.rowDelta = -1;
+      this.action.colDelta = 0;
+      break;
+    case 'ArrowDown':
+      this.action.rowDelta = +1;
+      this.action.colDelta = 0;
+      break;
+    }
+  }
+
+  componentDidMount() {
+    window.addEventListener('keydown', this.changeAction, true);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this.changeAction, true);
+  }
+
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-        </header>
-      </div>
+        <BlockGrid
+           rows={10}
+           cols={10}
+           waitMs={500}
+           actionFn={this.play} />
     );
   }
 }
