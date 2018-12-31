@@ -50,7 +50,7 @@ class App extends Component {
         <BlockGrid
            rows={10}
            cols={10}
-           waitMs={500}
+           tickMs={10}
            actionFn={this.play} />
     );
   }
