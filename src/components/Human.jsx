@@ -20,18 +20,22 @@ class Human extends Component {
 
   changeAction(e) {
     switch (e.key) {
+    case 'l':
     case 'ArrowRight':
       this.action.colDelta = +1;
       this.action.rowDelta = 0;
       break;
+    case 'h':
     case 'ArrowLeft':
       this.action.colDelta = -1;
       this.action.rowDelta = 0;
       break;
+    case 'k':
     case 'ArrowUp':
       this.action.rowDelta = -1;
       this.action.colDelta = 0;
       break;
+    case 'j':
     case 'ArrowDown':
       this.action.rowDelta = +1;
       this.action.colDelta = 0;
