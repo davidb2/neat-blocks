@@ -158,7 +158,7 @@ class BlockGrid extends React.Component {
     for (let row = rows - 1; row >= 0; row--) {
       for (let col = 0; col < cols; col++) {
         if (row === 0) {
-          board[row][col] = Math.random() < 0.4 ? OBSTACLE : BLANK;
+          board[row][col] = Math.random() < 0.2 ? OBSTACLE : BLANK;
         } else if (!(board[row][col] === PLAYER && board[row-1][col] === BLANK)
                 && board[row-1][col] !== PLAYER) {
           board[row][col] = board[row-1][col];
