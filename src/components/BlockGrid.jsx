@@ -3,8 +3,8 @@ import { withStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
 import Paper from '@material-ui/core/Paper';
 import _ from 'lodash';
-import './index.css';
 import Deque from 'double-ended-queue';
+import '../styles/index.css';
 
 const BLANK = { value: 0, color: 'white' };
 const OBSTACLE = { value: 1, color: 'red' };
@@ -12,38 +12,61 @@ const PLAYER = { value: 2, color: 'blue' };
 const CRASH = { value: 3, color: 'purple' };
 
 class BlockGrid extends React.Component {
+
   constructor(props) {
     super(props);
 
+    this.moveDown = this.moveDown.bind(this);
+    this.checkGameStatus = this.checkGameStatus.bind(this);
+
+    this.initialize(props);
+
+    this.state = {
+      board: this.board,
+      score: this.score,
+    };
+  }
+
+  initialize(props) {
     this.score = 0;
     this.ticks = 0;
     this.gameIsOver = false;
     this.openCols = _.range(props.cols);
     this.actionFn = typeof props.actionFn === 'function' ? props.actionFn : (() => {});
+    this.gameOverFn = typeof props.gameOverFn === 'function' ? props.gameOverFn : (() => {});
     this.board = _.map(Array(props.cols), () => _.fill(Array(props.rows), BLANK));
     this.playerPosition = {
       row: this.board.length-1,
       col: Math.floor(this.board[0].length / 2),
     };
     this.board[this.playerPosition.row][this.playerPosition.col] = PLAYER;
+  }
 
-    this.state = {
+  componentWillReceiveProps(props) {
+    this.initialize(props);
+    this.setState({
       board: this.board,
       score: this.score,
-    };
-
-    this.moveDown = this.moveDown.bind(this);
-    this.checkGameStatus = this.checkGameStatus.bind(this);
+    });
   }
 
   componentDidMount() {
     /* This triggers `componentDidUpdate` to start the game. */
-    this.setState({});
+    this.forceUpdate();
+  }
+
+  componentWillUnmount() {
+    this.gameIsOver = true;
   }
 
   componentDidUpdate() {
     setTimeout(() => {
       if (this.gameIsOver) {
+        this.gameOverFn({
+          board: this.board,
+          playerPosition: this.playerPosition,
+          score: this.score,
+        });
         return;
       } else if (this.ticks++ % 10 === 0) {
         this.moveDown();
@@ -122,7 +145,6 @@ class BlockGrid extends React.Component {
       const col = blockingCols[idx];
       board[0][col] = BLANK;
       newOpenCols.push(col);
-      console.log('Removed obstacle @', 0, col);
     }
     this.openCols = newOpenCols;
   }
@@ -164,7 +186,6 @@ class BlockGrid extends React.Component {
     const playerPosition = this.playerPosition;
 
     if (board[playerPosition.row][playerPosition.col] === OBSTACLE) {
-      console.log('game is over');
       board[oldPosition.row][oldPosition.col] = BLANK;
       board[playerPosition.row][playerPosition.col] = CRASH;
       return false;
@@ -194,6 +215,7 @@ class BlockGrid extends React.Component {
           </Grid>
         </Grid>
         <h3>{this.state.score}</h3>
+        <h3>{this.props.gameId}</h3>
       </div>
     );
   }

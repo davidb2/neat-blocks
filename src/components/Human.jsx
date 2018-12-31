@@ -1,13 +1,15 @@
 import React, { Component } from 'react';
 import BlockGrid from './BlockGrid';
 
-class App extends Component {
+class Human extends Component {
   constructor(props) {
     super(props);
 
     this.action = { rowDelta: 0, colDelta: 0 };
+
     this.changeAction = this.changeAction.bind(this);
     this.play = this.play.bind(this);
+    this.gameOver = this.gameOver.bind(this);
   }
 
   play({ board, playerPosition, score }) {
@@ -34,7 +36,17 @@ class App extends Component {
       this.action.rowDelta = +1;
       this.action.colDelta = 0;
       break;
+    case 'r':
+      /* Restart the game. */
+      this.forceUpdate();
+      break;
+    default:
+      break;
     }
+  }
+
+  gameOver({ board, playerPosition, score }) {
+    console.log('game is over');
   }
 
   componentDidMount() {
@@ -51,9 +63,10 @@ class App extends Component {
            rows={10}
            cols={10}
            tickMs={10}
+           gameOverFn={this.gameOver}
            actionFn={this.play} />
     );
   }
 }
 
-export default App;
+export default Human;
