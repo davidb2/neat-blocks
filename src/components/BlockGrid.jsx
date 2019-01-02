@@ -68,7 +68,7 @@ class BlockGrid extends React.Component {
           score: this.score,
         });
         return;
-      } else if (this.ticks++ % 10 === 0) {
+      } else if (this.ticks++ % 2 === 0) {
         this.moveDown();
       } else {
         const action = this.actionFn({
@@ -158,7 +158,7 @@ class BlockGrid extends React.Component {
     for (let row = rows - 1; row >= 0; row--) {
       for (let col = 0; col < cols; col++) {
         if (row === 0) {
-          board[row][col] = Math.random() < 0.2 ? OBSTACLE : BLANK;
+          board[row][col] = Math.random() < this.props.density ? OBSTACLE : BLANK;
         } else if (!(board[row][col] === PLAYER && board[row-1][col] === BLANK)
                 && board[row-1][col] !== PLAYER) {
           board[row][col] = board[row-1][col];
