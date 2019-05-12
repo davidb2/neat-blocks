@@ -145,7 +145,7 @@ class TemporalDifference extends Component {
       explorePercentage = this.decay(this.episodes, this.props.exploreRate, 0.01);
     }
 
-    const action = _.random() < explorePercentage ?
+    const action = _.random(true) < explorePercentage ?
         _.sample(this.possibleActions) : this.bestAction(board);
 
     if (this.training) {
