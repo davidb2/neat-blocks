@@ -4,12 +4,14 @@ import Grid from '@material-ui/core/Grid';
 import Paper from '@material-ui/core/Paper';
 import _ from 'lodash';
 import Deque from 'double-ended-queue';
+import seedrandom from 'seedrandom';
 import '../styles/index.css';
 
 const BLANK = { value: 0, color: 'white' };
 const OBSTACLE = { value: 1, color: 'red' };
 const PLAYER = { value: 2, color: 'blue' };
 const CRASH = { value: 3, color: 'purple' };
+const SEED = 2019;
 
 class BlockGrid extends React.Component {
 
@@ -24,6 +26,7 @@ class BlockGrid extends React.Component {
     this.state = {
       board: this.board,
       score: this.score,
+      rng: seedrandom(SEED),
     };
   }
 
@@ -47,6 +50,7 @@ class BlockGrid extends React.Component {
     this.setState({
       board: this.board,
       score: this.score,
+      rng: seedrandom(SEED),
     });
   }
 
@@ -105,6 +109,7 @@ class BlockGrid extends React.Component {
   allowEscapes(playerPosition) {
     const board = this.board;
     const { rows, cols } = this.props;
+    const { rng } = this.state;
 
     const seen = new Set();
     const bfs = new Deque(_.map(this.openCols, col => ({ row: 1, col })));
@@ -141,7 +146,7 @@ class BlockGrid extends React.Component {
 
     /* Remove the blocking obstacle if it exists. */
     if (newOpenCols.length === 0 && blockingCols.length > 0) {
-      const idx = Math.floor(Math.random() * blockingCols.length);
+      const idx = Math.floor(rng() * blockingCols.length);
       const col = blockingCols[idx];
       board[0][col] = BLANK;
       newOpenCols.push(col);
@@ -153,12 +158,13 @@ class BlockGrid extends React.Component {
     const board = this.board;
     const playerPosition = this.playerPosition;
     const { rows, cols } = this.props;
+    const { rng } = this.state;
 
     /* Make blocks fall. */
     for (let row = rows - 1; row >= 0; row--) {
       for (let col = 0; col < cols; col++) {
         if (row === 0) {
-          board[row][col] = Math.random() < this.props.density ? OBSTACLE : BLANK;
+          board[row][col] = rng() < this.props.density ? OBSTACLE : BLANK;
         } else if (!(board[row][col] === PLAYER && board[row-1][col] === BLANK)
                 && board[row-1][col] !== PLAYER) {
           board[row][col] = board[row-1][col];
