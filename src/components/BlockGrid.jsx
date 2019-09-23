@@ -50,7 +50,7 @@ class BlockGrid extends React.Component {
     this.setState({
       board: this.board,
       score: this.score,
-      rng: seedrandom(SEED),
+      /* rng: seedrandom(SEED), */
     });
   }
 
@@ -72,7 +72,7 @@ class BlockGrid extends React.Component {
           score: this.score,
         });
         return;
-      } else if (this.ticks++ % 2 === 0) {
+      } else if (this.ticks++ % 4 === 0) {
         this.moveDown();
       } else {
         const action = this.actionFn({

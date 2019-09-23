@@ -2,12 +2,13 @@ import React, { Component } from 'react';
 import BlockGrid from './BlockGrid';
 import _ from 'lodash';
 import * as synaptic from 'synaptic';
+import { product, tee, toArray } from 'iter-tools/es2015';
 
 class TemporalDifference extends Component {
   possibleActions = _.flatMap([-1, +1], d => [
     /* { rowDelta: d, colDelta: 0 }, */
     { rowDelta: 0, colDelta: d },
-  ]).concat([{ rowDelta: 0, colDelta: 0}])
+  ]).concat([{ rowDelta: 0, colDelta: 0}]);
 
   constructor(props) {
     super(props);
@@ -19,71 +20,70 @@ class TemporalDifference extends Component {
     this.numTrainEpisodes = this.props.numTrainEpisodes || Infinity;
     this.training = this.episodes < this.numTrainEpisodes;
 
-    /* Construct the value function approximater. */
-    const layers = [
-      new synaptic.Layer(props.rows * props.cols + 2),
-      new synaptic.Layer(5),
-      new synaptic.Layer(1),
-    ];
-
-    for (let idx = 1; idx < layers.length; idx++) {
-      layers[idx-1].project(layers[idx], synaptic.Layer.connectionType.ALL_TO_ALL);
-      layers[idx].set({
-        squash: synaptic.Neuron.squash.HLIM,
-        /* bias: 0, */
-      });
-    }
-
-    this.network = new synaptic.Network({
-      input: layers[0],
-      hidden: layers.slice(1, -1),
-      output: layers[layers.length-1],
+    this.possibleStates = toArray(product(...tee(_.range(-1, this.props.rows).concat(undefined), 5)));
+    /* Initialize Q-table and N-table. */
+    this.Qtable = {};
+    this.Ntable = {};
+    _.forEach(this.possibleStates, state => {
+      this.Qtable[state] = {};
+      this.Ntable[state] = 0;
+      _.forEach(this.possibleActions, ({ rowDelta, colDelta }) => {
+        const action = [rowDelta, colDelta];
+        this.Qtable[state][action] = 0;
+      })
     });
 
-    console.log(this.network.toJSON());
     /* Bind class functions. */
     this.play = this.play.bind(this);
     this.gameOver = this.gameOver.bind(this);
   }
 
-  boardToPartialState(board) {
-    return _.chain(board).flattenDeep().map('value').value();
+  boardToPartialState(board, { row, col }) {
+    const getCol = c => _.map(board, boardRow => boardRow[c]);
+    const last = c => {
+      if (board[0][c] === undefined) return undefined;
+      return _.findLastIndex(getCol(c), ({ value }) => _.has([1, 3], value));
+    };
+    const state = [
+      last(col-2),
+      last(col-1),
+      last(col),
+      last(col+1),
+      last(col+2),
+    ];
+    return state;
   }
 
-  Q(board, { rowDelta, colDelta }) {
-    const state = this.boardToPartialState(board);
+  Q(state, { rowDelta, colDelta }) {
     const action = [rowDelta, colDelta];
-    return this.network.activate(_.concat(state, action));
+    return this.Qtable[state][action];
   }
 
-  bestAction(board) {
-    const state = this.boardToPartialState(board);
+  bestAction(state) {
     return _.maxBy(this.possibleActions, ({ rowDelta, colDelta }) => {
       const action = [rowDelta, colDelta];
-      const output = this.network.activate(_.concat(state, action));
-      return output[0];
+      return this.Qtable[state][action];
     });
   }
 
-  updateQ(board, action, reward, nextBoard) {
+  updateQ(state, { rowDelta, colDelta }, reward, nextState) {
     /* Q(s, a) += alpha * (r + lambda * max_{a'}{Q(s', a')} - Q(s, a)) */
-    const bestAction = this.bestAction(nextBoard);
-    const bestQ = this.Q(nextBoard, bestAction);
-
-    const state = this.boardToPartialState(board);
-    if (_.isEqual(state, [1, 0, 2, 0])) {
-      console.log(action, reward);
-    }
-    const Q_actual = [reward + this.props.discountFactor * bestQ];
-    /* Activate network for Q prediction. */
-    this.Q(board, action);
-
-    /* This propagates based on the activation that `Q_pred` made. */
-    this.network.propagate(this.decay(this.episodes, this.props.learningRate, 0.01), Q_actual);
+    const action = [rowDelta, colDelta];
+    const bestAction = this.bestAction(nextState);
+    const bestQ = this.Q(nextState, bestAction);
+    const Q_actual = reward + this.props.discountFactor * bestQ;
+    const lr = this.decay(this.episodes, this.props.learningRate, 0.01);
+    this.Qtable[state][action] += lr * (Q_actual - this.Qtable[state][action]);
   }
 
-  getReward(score) {
-    return 10 * (score - this.lastScore);
+  getReward(board, { row, col }, score) {
+    const s =
+      _.chain(toArray(product(...tee([-1, 0, +1], 2))))
+       .map(([dr, dc]) => _.get(board, `${row+dr}.${col+dc}.value`) === 0 ? 0 : 1)
+       .sum()
+       .value();
+
+    return -0.01 * s;
   }
 
   reset() {
@@ -103,7 +103,6 @@ class TemporalDifference extends Component {
         `Learning rate is `
         + `${this.decay(this.episodes, this.props.learningRate, 0.01)}`
       );
-      console.log(this.network.toJSON());
       this.scores = [];
     }
     this.episodes++;
@@ -111,17 +110,10 @@ class TemporalDifference extends Component {
 
   gameOver({ board, playerPosition, score }) {
     if (this.training && this.lastBoard && this.lastAction) {
-      const state = this.boardToPartialState(this.lastBoard);
-      if (_.isEqual(state, [1, 0, 2, 0])) {
-        console.log(this.lastAction, -10);
-      }
-      /* Activate network for Q prediction. */
-      this.Q(this.lastBoard, this.lastAction);
-
-      const reward = -10;
-      const Q_actual = [reward];
-      /* This propagates based on the activation that `Q_pred` made. */
-      this.network.propagate(this.decay(this.episodes, this.props.learningRate, 0.01), Q_actual);
+      const reward = -1000;
+      const state = this.boardToPartialState(this.lastBoard, this.lastPlayerPosition);
+      const nextState = this.boardToPartialState(board, playerPosition);
+      this.updateQ(state, this.lastAction, reward, nextState);
     }
     this.reset();
     setTimeout(this.forceUpdate(), this.training ? 0 : 1000);
@@ -133,9 +125,13 @@ class TemporalDifference extends Component {
 
   play({ board, playerPosition, score }) {
     if (this.training && this.lastBoard && this.lastAction && this.lastScore) {
-      const reward = this.getReward(score);
-      this.updateQ(this.lastBoard, this.lastAction, reward, board);
+      const reward = this.getReward(board, playerPosition, score);
+      const state = this.boardToPartialState(this.lastBoard, this.lastPlayerPosition);
+      const nextState = this.boardToPartialState(board, playerPosition);
+      this.updateQ(state, this.lastAction, reward, nextState);
     }
+
+    const state = this.boardToPartialState(board, playerPosition);
 
     let explorePercentage = this.props.exploreRate;
     if (!this.training || this.episodes >= this.numTrainEpisodes) {
@@ -143,21 +139,18 @@ class TemporalDifference extends Component {
       this.training = false;
     } else if (this.props.glie) {
       explorePercentage = this.decay(this.episodes, this.props.exploreRate, 0.01);
+      if (this.Ntable[state] < this.props.nEps) {
+        explorePercentage = 1;
+      }
+      this.Ntable[state]++;
     }
 
     const action = _.random(true) < explorePercentage ?
-        _.sample(this.possibleActions) : this.bestAction(board);
-
-    if (this.training) {
-      const state = this.boardToPartialState(board);
-      if (_.isEqual(state, [1, 0, 2, 0])) {
-        // console.log(action, this.Q(board, action));
-      }
-      // console.log(_.concat(state, action.rowDelta, action.colDelta), this.Q(board, action));
-    }
+        _.sample(this.possibleActions) : this.bestAction(state);
 
     this.lastBoard = _.cloneDeep(board);
     this.lastAction = _.cloneDeep(action);
+    this.lastPlayerPosition = _.cloneDeep(playerPosition);
     this.lastScore = score;
 
     return action;

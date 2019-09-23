@@ -7,6 +7,8 @@ import Deque from 'double-ended-queue';
 import ForceGraph2D from 'react-force-graph-2d';
 import * as d3 from 'd3';
 
+const TIMEOUT = 200;
+
 class MonteCarlo extends Component {
   possibleActions = _.flatMap([-1, +1], d => [
     /* { rowDelta: d, colDelta: 0 }, */
@@ -57,7 +59,7 @@ class MonteCarlo extends Component {
 
     this.network.evolve(trainingData, {
       iterations: 100,
-      growth: this.decay(this.episodes, this.props.learningRate, 0.1),
+      growth: 0.00001 /* this.decay(this.episodes, this.props.learningRate, 0.1) */,
     }).then(({ error }) => {
       console.log(error);
       this.reset();
@@ -79,7 +81,7 @@ class MonteCarlo extends Component {
       this.evolveNetwork(this.episodeRewards);
     } else {
       this.reset();
-      setTimeout(this.forceUpdate(), 1000);
+      setTimeout(this.forceUpdate(), TIMEOUT);
     }
   }
 

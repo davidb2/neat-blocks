@@ -1,15 +1,15 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-/* import TemporalDifference from './components/TemporalDifference'; */
+import TemporalDifference from './components/TemporalDifference';
 import MonteCarlo from './components/MonteCarlo';
 import * as serviceWorker from './scripts/serviceWorker';
 import './styles/index.css';
 
 ReactDOM.render(
   <MonteCarlo
-    rows={3}
-    cols={3}
-    learningRate={0.7}
+    rows={5}
+    cols={5}
+    learningRate={0.99}
     discountFactor={0.1}
     exploreRate={0.2}
     glie={true}
